@@ -23,9 +23,6 @@ import { createInventoryPrintHtml } from "../../../print/inventoryPrintTemplate"
 
 import Toast from "../../../utils/Toast";
 
-
-
-
 function VerificationCard({
   item,
   onClose,
@@ -158,7 +155,9 @@ function VerificationCard({
             fontSize: "0.85rem",
           }}
         >
-          {item.verif_time ? new Date(item.verif_time).toLocaleString() : "N/A"}
+          {item.verif_time
+            ? new Date(item.verif_time.replace(" ", "T")).toLocaleString()
+            : "N/A"}
         </Typography>
       </Box>
     </Box>
@@ -177,6 +176,7 @@ export default function Inventory() {
   const { data: employeeInfo } = useEmpInfo();
 
   const { data: allITInventoryData } = useITItemsByLocation();
+  console.log(allITInventoryData);
   const [itInventory, setItInventory] = React.useState<Item[]>([]);
   const [confirmedITInventory, setConfirmedITInventory] = React.useState<
     Item[]
@@ -282,7 +282,7 @@ export default function Inventory() {
       field: "isThere",
       headerName: "Item Confirmed",
       width: 150,
-      
+
       sortable: false,
       filterable: false,
       align: "center",
@@ -294,7 +294,6 @@ export default function Inventory() {
 
         return (
           <Checkbox
-      
             checked={isConfirmed}
             onChange={(event) => {
               const checked = event.target.checked;
@@ -381,7 +380,7 @@ export default function Inventory() {
       filterable: false,
       align: "center",
       headerAlign: "center",
-      
+
       renderCell: (params) => {
         const isConfirmed = confirmedMaintInventory.some(
           (item) => item.itemID === params.row.itemID,
@@ -538,13 +537,11 @@ export default function Inventory() {
 
     const verifiedBy = toUpperStr(`${item?.verified_by ?? ""} `).trim();
 
-    const verifiedAt = new Date().toISOString();
-
     const verifiedItem: Item = {
       ...item,
       isThere: true,
       verified_by: verifiedBy,
-      verif_time: verifiedAt,
+      verif_time: item.verif_time,
     };
 
     // Show verification card on this specific grid
@@ -578,71 +575,59 @@ export default function Inventory() {
     }
   };
 
+  const printInventoryWorksheet = () => {
+    const html = createInventoryPrintHtml(itInventory, maintInventory);
 
+    const iframe = document.createElement("iframe");
 
-const printInventoryWorksheet = () => {
-  const html = createInventoryPrintHtml(
-    itInventory,
-    maintInventory,
-  );
+    // Keep the iframe completely hidden
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
 
-  const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
 
-  // Keep the iframe completely hidden
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
-  iframe.style.visibility = "hidden";
+    const iframeDocument =
+      iframe.contentDocument || iframe.contentWindow?.document;
 
-  document.body.appendChild(iframe);
+    if (!iframeDocument) {
+      document.body.removeChild(iframe);
 
-  const iframeDocument =
-    iframe.contentDocument ||
-    iframe.contentWindow?.document;
+      setToast({
+        open: true,
+        msg: "Unable to prepare print document.",
+        sev: "error",
+      });
 
-  if (!iframeDocument) {
-    document.body.removeChild(iframe);
+      return;
+    }
 
-    setToast({
-      open: true,
-      msg: "Unable to prepare print document.",
-      sev: "error",
-    });
+    iframeDocument.open();
 
-    return;
-  }
+    iframeDocument.write(html);
 
-  iframeDocument.open();
+    iframeDocument.close();
 
-  iframeDocument.write(html);
-
-  iframeDocument.close();
-
-  iframe.onload = () => {
-    setTimeout(() => {
-      iframe.contentWindow?.focus();
-
-      iframe.contentWindow?.print();
-
-      // Give the browser time to finish
-      // before removing the iframe.
+    iframe.onload = () => {
       setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 1000);
+        iframe.contentWindow?.focus();
 
-    }, 100);
+        iframe.contentWindow?.print();
+
+        // Give the browser time to finish
+        // before removing the iframe.
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1000);
+      }, 100);
+    };
   };
-};
-
-
-
-
-
 
   return (
     <>
@@ -1154,7 +1139,7 @@ const printInventoryWorksheet = () => {
             <Stack direction="row" spacing={1.5}>
               <Button
                 variant="contained"
-                 onClick={printInventoryWorksheet}
+                onClick={printInventoryWorksheet}
                 sx={{
                   px: 2.5,
                   borderRadius: 2,
@@ -1167,7 +1152,6 @@ const printInventoryWorksheet = () => {
                     boxShadow: "0 6px 16px rgba(37, 99, 235, 0.35)",
                   },
                 }}
-               
               >
                 Print Worksheet
               </Button>
@@ -1178,7 +1162,7 @@ const printInventoryWorksheet = () => {
                   borderRadius: 2,
                   fontWeight: 700,
                   textTransform: "none",
-                  
+
                   background: "linear-gradient(135deg, #207e34, #2b5234)",
                   boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)",
                   "&:hover": {
